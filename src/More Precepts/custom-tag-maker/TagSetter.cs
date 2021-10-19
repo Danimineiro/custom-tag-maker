@@ -20,9 +20,9 @@ namespace CustomTagMaker
 			harmony.PatchAll();
 
 			foreach(ModContentPack modContentPack in LoadedModManager.RunningModsListForReading.Where(mod => !mod.ModMetaData.CanToUploadToWorkshop()))
-            {
+			{
 				modContentPack.ModMetaData.CanToUploadToWorkshop();
-            }
+			}
 		}
 	}
 
@@ -71,11 +71,11 @@ namespace CustomTagMaker
 	
 	[StaticConstructorOnStartup]
 	public static class DicBuilder
-    {
+	{
 		static DicBuilder()
-        {
+		{
 			for (int i = 0; i < TagSettings.keys.Count; i++ )
-            {
+			{
 				if (!TagSettings.modListPair.ContainsKey(TagSettings.keys[i]))
 				{
 					TagSettings.modListPair.Add(TagSettings.keys[i], new List<string>());
@@ -83,8 +83,8 @@ namespace CustomTagMaker
 
 				TagSettings.modListPair[TagSettings.keys[i]].Add(TagSettings.values[i]);
 			}
-        }
-    }
+		}
+	}
 
 	public class TagSettings : ModSettings
 	{
@@ -126,13 +126,13 @@ namespace CustomTagMaker
 			return "[DN] Custom Tag Maker";
 		}
 
-        public override void WriteSettings()
+		public override void WriteSettings()
 		{
 			TagSettings.keys.Clear();
 			TagSettings.values.Clear();
 
 			foreach (KeyValuePair<string, List<string>> keyValuePair in TagSettings.modListPair)
-            {
+			{
 				foreach (string str in keyValuePair.Value)
 				{
 					TagSettings.keys.Add(keyValuePair.Key);
@@ -143,41 +143,128 @@ namespace CustomTagMaker
 			settings.Write();
 		}
 
-        public override void DoSettingsWindowContents(Rect inRect)
+		private void HandleScrolling()
 		{
-			GameFont prevFont = Text.Font;
-			TextAnchor textAnchor = Text.Anchor;
-
 			Event e = Event.current;
 			if (e.isScrollWheel)
 			{
 				scrollPos += e.delta;
 			}
-			else if (e.isKey)
+			else if (e.isKey && e.type != EventType.KeyUp)
 			{
-				if (e.type != EventType.KeyUp)
+				switch (e.keyCode)
 				{
-					switch (e.keyCode)
-					{
-						case KeyCode.DownArrow:
-							scrollPos += scrollBarArrowMod;
-							break;
-						case KeyCode.UpArrow:
+					case KeyCode.DownArrow:
+						scrollPos += scrollBarArrowMod;
+						break;
+					case KeyCode.UpArrow:
 
-							scrollPos -= scrollBarArrowMod;
-							break;
-						default:
-							break;
-					}
+						scrollPos -= scrollBarArrowMod;
+						break;
+					default:
+						break;
 				}
 			}
+		}
+
+		private List<FloatMenuOption> CreateFloatMenuOptions()
+		{
+			List<FloatMenuOption> list = new List<FloatMenuOption>();
+			foreach (ModContentPack Content in LoadedModManager.RunningModsListForReading.Where(modContentPack => modContentPack.ModMetaData.Source == ContentSource.ModsFolder))
+			{
+				if (Content.ModMetaData.CanToUploadToWorkshop() || offlineMode)
+				{
+					list.Add(new FloatMenuOption(Content.Name, delegate ()
+					{
+						selectedMod = Content.Name;
+						updateScrollViewHeight = true;
+					}));
+				}
+			}
+
+			if (!offlineMode || list.NullOrEmpty()) list.Add(new FloatMenuOption("If your mod isn't displayed here, try pressing the button again. (Steam slow)", null));
+			return list;
+		}
+
+		private bool AddingCondition(string tag)
+		{
+			return tag != null && tag != "";
+		}
+
+		private bool RemoveCondition(string tag)
+		{
+			return tag != null && tag == "";
+		}
+
+		private void HandleTags(Listing_Standard ls)
+		{
+			if (TagSettings.modListPair.ContainsKey(selectedMod))
+			{
+				for (int i = 0; i < TagSettings.modListPair[selectedMod].Count; i++)
+				{
+					string tag = TagSettings.modListPair[selectedMod][i];
+
+					string temp = ls.TextEntry(tag);
+					if (AddingCondition(temp))
+					{
+						TagSettings.modListPair[selectedMod][i] = temp;
+					}
+					else if (RemoveCondition(temp))
+					{
+						TagSettings.modListPair[selectedMod].RemoveAt(i);
+					}
+				}
+				string newTag = ls.TextEntry("");
+
+				if (newTag != "")
+				{
+					TagSettings.modListPair[selectedMod].Add(newTag);
+					updateScrollViewHeight = true;
+				}
+			}
+			else
+			{
+				TagSettings.modListPair.Add(selectedMod, new List<string>());
+				updateScrollViewHeight = true;
+			}
+		}
+
+		private void DoScrollView(Rect inRect)
+		{
+			Rect ScrollInRect = new Rect(0f, 0f, inRect.width, scrollInRectHeight);
+
+			inRect.height = 500;
+			Widgets.BeginScrollView(inRect, ref scrollPos, ScrollInRect);
+
+			Listing_Standard inner = new Listing_Standard();
+			inner.Begin(ScrollInRect);
+			inner.Gap();
+
+			HandleTags(inner);
+
+			scrollInRectHeight = inner.CurHeight;
+			if (updateScrollViewHeight)
+			{
+				updateScrollViewHeight = !updateScrollViewHeight;
+				scrollInRectHeight = float.MaxValue;
+			}
+
+			inner.End();
+			Widgets.EndScrollView();
+		}
+
+		public override void DoSettingsWindowContents(Rect inRect)
+		{
+			GameFont prevFont = Text.Font;
+			TextAnchor textAnchor = Text.Anchor;
+
+			HandleScrolling();
 
 			Listing_Standard ls = new Listing_Standard();
 			ls.Begin(inRect);
 
 			Rect DisplayAllLoadedModsRect = new Rect(0f, 0f, inRect.width / 2f - offset, 50f);
 			Rect SelectModButtonRect = new Rect(DisplayAllLoadedModsRect.width + offset, 0f, inRect.width - (DisplayAllLoadedModsRect.width + offset), 50f);
-			Rect ScrollInRect = new Rect(0f, 0f, inRect.width, scrollInRectHeight);
 
 			Text.Font = GameFont.Small;
 			Text.Anchor = TextAnchor.UpperCenter;
@@ -187,75 +274,11 @@ namespace CustomTagMaker
 			Text.Font = prevFont;
 			Text.Anchor = textAnchor;
 
-			if (Widgets.ButtonText(SelectModButtonRect, "Selected Mod:\n" + (selectedMod ?? "Click to select a mod")))
-			{
-				List<FloatMenuOption> list = new List<FloatMenuOption>();
-				foreach (ModContentPack Content in LoadedModManager.RunningModsListForReading.Where(modContentPack => modContentPack.ModMetaData.Source == ContentSource.ModsFolder))
-				{
-					if (Content.ModMetaData.CanToUploadToWorkshop() || offlineMode)
-					{
-						list.Add(new FloatMenuOption(Content.Name, delegate ()
-						{
-							selectedMod = Content.Name;
-							updateScrollViewHeight = true;
-						}));
-					}
-				}
-				if (!offlineMode || list.NullOrEmpty()) list.Add(new FloatMenuOption("If your mod isn't displayed here, try pressing the button again. (Steam slow)", null));
-				Find.WindowStack.Add(new FloatMenu(list));
-				
-			}
+			if (Widgets.ButtonText(SelectModButtonRect, "Selected Mod:\n" + (selectedMod ?? "Click to select a mod"))) Find.WindowStack.Add(new FloatMenu(CreateFloatMenuOptions()));
 
 			if (selectedMod != null)
 			{
-				inRect.height = 500;
-				Widgets.BeginScrollView(inRect, ref scrollPos, ScrollInRect);
-
-				Listing_Standard inner = new Listing_Standard();
-				inner.Begin(ScrollInRect);
-				inner.Gap();
-
-				if (TagSettings.modListPair.ContainsKey(selectedMod))
-				{
-
-					for (int i = 0; i < TagSettings.modListPair[selectedMod].Count; i++)
-					{
-						string tag = TagSettings.modListPair[selectedMod][i];
-
-						string temp = inner.TextEntry(tag);
-						if (temp != null && temp != "")
-						{
-							TagSettings.modListPair[selectedMod][i] = temp;
-						}
-						else if (temp != null && temp == "")
-						{
-							TagSettings.modListPair[selectedMod].RemoveAt(i);
-						}
-					}
-					string newTag = inner.TextEntry("");
-
-					if (newTag != "")
-					{
-						TagSettings.modListPair[selectedMod].Add(newTag);
-						updateScrollViewHeight = true;
-					} 
-				}
-                else
-                {
-					TagSettings.modListPair.Add(selectedMod, new List<string>());
-					updateScrollViewHeight = true;
-				}
-
-
-				scrollInRectHeight = inner.CurHeight;
-				if (updateScrollViewHeight)
-				{
-					updateScrollViewHeight = !updateScrollViewHeight;
-					scrollInRectHeight = float.MaxValue;
-				}
-
-				inner.End();
-				Widgets.EndScrollView();
+				DoScrollView(inRect);
 			}
 
 			ls.End();
