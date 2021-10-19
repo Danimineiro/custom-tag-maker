@@ -74,7 +74,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="TagSetter.cs" />
+    <Compile Include="OnStartup.cs" />
+    <Compile Include="Patching.cs" />
+    <Compile Include="TagMod.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

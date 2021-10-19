@@ -1,91 +1,10 @@
 ﻿using Verse;
-using HarmonyLib;
 using System.Collections.Generic;
-using System.IO;
-using Verse.Steam;
-using Steamworks;
 using UnityEngine;
 using System.Linq;
-using RimWorld;
-using System.Threading;
 
 namespace CustomTagMaker
 {
-	[StaticConstructorOnStartup]
-	public static class Patcher
-	{
-		static Patcher()
-		{
-			var harmony = new Harmony("dani.morePrecepts.diversityThoughtPatcher");
-			harmony.PatchAll();
-
-			foreach(ModContentPack modContentPack in LoadedModManager.RunningModsListForReading.Where(mod => !mod.ModMetaData.CanToUploadToWorkshop()))
-			{
-				modContentPack.ModMetaData.CanToUploadToWorkshop();
-			}
-		}
-	}
-
-	[HarmonyPatch]
-	class Patches
-	{
-		[HarmonyPrefix]
-		[HarmonyPatch(typeof(Workshop), "SetWorkshopItemDataFrom")]
-		public static bool SetWorkshopItemDataFrom(UGCUpdateHandle_t updateHandle, WorkshopItemHook hook, bool creating)
-		{
-			hook.PrepareForWorkshopUpload();
-			SteamUGC.SetItemTitle(updateHandle, hook.Name);
-			if (creating)
-			{
-				SteamUGC.SetItemDescription(updateHandle, hook.Description);
-			}
-			if (!File.Exists(hook.PreviewImagePath))
-			{
-				Log.Warning("Missing preview file at " + hook.PreviewImagePath);
-			}
-			else
-			{
-				SteamUGC.SetItemPreview(updateHandle, hook.PreviewImagePath);
-			}
-			IList<string> tags = hook.Tags;
-			foreach (System.Version version in hook.SupportedVersions)
-			{
-				tags.Add(version.Major + "." + version.Minor);
-			}
-
-			if (TagSettings.modListPair.ContainsKey(hook.Name))
-			{
-
-				foreach (string tag in TagSettings.modListPair.TryGetValue(hook.Name))
-				{
-					tags.Add(tag);
-				}
-			}
-
-			SteamUGC.SetItemTags(updateHandle, tags);
-			SteamUGC.SetItemContent(updateHandle, hook.Directory.FullName);
-
-			return false;
-		}
-	}
-	
-	[StaticConstructorOnStartup]
-	public static class DicBuilder
-	{
-		static DicBuilder()
-		{
-			for (int i = 0; i < TagSettings.keys.Count; i++ )
-			{
-				if (!TagSettings.modListPair.ContainsKey(TagSettings.keys[i]))
-				{
-					TagSettings.modListPair.Add(TagSettings.keys[i], new List<string>());
-				}
-
-				TagSettings.modListPair[TagSettings.keys[i]].Add(TagSettings.values[i]);
-			}
-		}
-	}
-
 	public class TagSettings : ModSettings
 	{
 		public static Dictionary<string, List<string>> modListPair = new Dictionary<string, List<string>>();
