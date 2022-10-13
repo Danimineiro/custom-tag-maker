@@ -6,7 +6,7 @@ using Steamworks;
 using Verse;
 using Verse.Steam;
 
-namespace CustomTagMaker
+namespace CTM
 {
 	[StaticConstructorOnStartup]
 	public static class Patcher

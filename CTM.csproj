@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net48</TargetFramework>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+		<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<RootNamespace>CTM</RootNamespace>
+		<OutputPath>1.4/Assemblies</OutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Remove="Assemblies\**" />
+	  <EmbeddedResource Remove="Assemblies\**" />
+	  <None Remove="Assemblies\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Krafs.Rimworld.Ref" Version="1.4.3515-beta" />
+		<PackageReference Include="Lib.Harmony" Version="2.2.2" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="1.4\Assemblies\" />
+	</ItemGroup>
+
+</Project>
